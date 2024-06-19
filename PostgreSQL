@@ -1,0 +1,111 @@
+-- 1. After finding length and appropriate date type for our sql table we can build it as below: 
+
+create table death ( 
+
+iso_code varchar(8), 
+
+continent varchar(13), 
+
+country varchar (32), 
+
+date_column date, 
+
+population bigint, 
+
+total_cases integer, 
+
+new_cases integer, 
+
+new_cases_smoothed numeric(9,3), 
+
+total_deaths integer, 
+
+new_deaths smallint, 
+
+new_deaths_smoothed numeric(8,3), 
+
+total_cases_per_million numeric(9,3), 
+
+new_cases_per_million numeric(7,3), 
+
+new_cases_smoothed_per_million numeric(7,3), 
+
+total_deaths_per_million numeric(7,3), 
+
+new_deaths_per_million numeric(6,3), 
+
+new_deaths_smoothed_per_million numeric(4,2), 
+
+reproduction_rate numeric(3,2), 
+
+icu_patients smallint, 
+
+icu_patients_per_million numeric(6,3), 
+
+hosp_patients integer, 
+
+hosp_patients_per_million numeric(7,3), 
+
+weekly_icu_admissions numeric(7,3), 
+
+weekly_icu_admissions_per_million numeric(6,3), 
+
+weekly_hosp_admissions numeric(9,3), 
+
+weekly_hosp_admissions_per_million numeric(7,3) 
+
+) 
+
+-- a) VARCHAR (varchar means variable character used to contain small to medium range of value, alternative can be TEXT datatype but used to contain large range of value)  
+
+-- b) BIGINT and INTEGER and SMALLINT both used to keep integer value but BIGINT used for longer one 
+
+-- c) NUMERIC is used to keep values that has decimal point for example 12.234  NUMERIC(5,3) 5 is overall length 3 is after decimal point 
+
+-- link for reference: https://www.postgresql.org/docs/current/datatype.html
+
+-- 2. we import our csv 
+
+-- NOTA BENNE do not forget to click on headers in options section before importing excel file
+
+-- 3. to find death percentage: 
+
+Select country, date_column, total_cases, total_deaths, 
+
+(cast(TOTAL_DEATHS as float)/NULLIF(TOTAL_CASES,0))*100 as deathpercent from death 
+
+) 
+
+--When dividing two integers, the result can be zero in two situations: 
+
+--a) If the numerator is less than the denominator, the result will be zero because integers don't include decimal parts. 
+--To handle this, we cast the numerator to a float before division. 
+
+--b) If the denominator is zero, it creates an issue. To handle this, we use the NULLIF function. 
+--It checks if the denominator is zero and returns NULL if it is, preventing any calculation problems. 
+
+--references are below:
+--https://www.geeksforgeeks.org/how-to-avoid-division-by-zero-in-postgresql/
+--https://stackoverflow.com/questions/26537140/division-of-integers-returns-0
+
+-- 4. Our deathpercent column yielded double precision values, which hold up to 15 digits after the decimal point, compared to float's 7 digits.
+--To round these values, we can either create a temporary table or use a SELECT IN WITH statement.
+
+with deathper 
+
+as 
+
+( 
+
+Select country, date_column, total_cases, total_deaths, 
+
+(CAST(TOTAL_DEATHS as float)/NULLIF(TOTAL_CASES,0))*100 as deathpercent from death 
+
+)  
+
+select *, ROUND(CAST(deathpercent AS numeric),2) AS rounddeathper FROM deathper 
+
+-- Nota bene: if we do not cast double precision to numeric before using round() function PostgreSQL will give following error : 
+-- function round(double precision, integer) does not exist 
+
+--reference: https://www.postgresql.org/message-id/CAApHDvpSkde30EU4bpEffJBW2f4VS_nLN0Tzf8QHcft56d1JLw%40mail.gmail.com
