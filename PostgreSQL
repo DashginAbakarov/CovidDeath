@@ -109,3 +109,268 @@ select *, ROUND(CAST(deathpercent AS numeric),2) AS rounddeathper FROM deathper
 -- function round(double precision, integer) does not exist 
 
 --reference: https://www.postgresql.org/message-id/CAApHDvpSkde30EU4bpEffJBW2f4VS_nLN0Tzf8QHcft56d1JLw%40mail.gmail.com
+
+--5. looking at the death percentage for particular country such as United States 
+
+with deathper 
+
+as 
+
+( 
+
+Select country, date_column, total_cases, total_deaths, 
+
+(cast(TOTAL_DEATHS as float)/NULLIF(TOTAL_CASES,0))*100 as deathpercent from death 
+
+)  
+
+select *, round(cast(deathpercent as numeric),2) as rounddeathper  
+
+from deathper 
+
+where country ilike '%states%' 
+
+--like and ilike is doing exactly the same thing but 
+--ilike is not sensitive if words contain different letters such as Upper of small
+
+--reference: https://www.postgresql.org/docs/7.3/functions-matching.html#:~:text=The%20keyword%20ILIKE%20can%20be,and%20~~*%20corresponds%20to%20ILIKE%20.
+
+--9.we calculate how many total_cases percentage amongst population 
+
+with deathper 
+
+as 
+
+( 
+
+Select country, population, date_column, total_cases, total_deaths, 
+
+(cast(total_cases as float)/NULLIF(population,0))*100 as caseperpop from death 
+
+)  
+
+select *, round(cast(caseperpop as numeric),2) as roundcaseperpop 
+
+from deathper 
+
+where caseperpop is not null 
+
+order by roundcaseperpop desc 
+
+--We have done same procedure above and also we give condition where our caseperpop(case percentage of population)
+--is not NULL value avoiding to scroll down till find result values 
+
+--10.we can calculate total case per country  
+
+with deathper 
+
+as 
+
+( 
+
+Select country, population, max(total_cases) as totcasepercount,  
+
+max(cast(total_cases as float)/NULLIF(population,0))*100 as caseperpop from death 
+
+group by death.country, death.population 
+
+)  
+
+select *, round(cast(caseperpop as numeric),2) as roundcaseperpop 
+
+from deathper 
+
+where caseperpop is not null 
+
+order by roundcaseperpop desc 
+
+--11.  we can also look at how many people died per country to do so again  
+
+with deathper 
+
+as 
+
+( 
+
+Select country, population, max(total_deaths) as totdeathpercount,  
+
+max(cast(total_deaths as float)/NULLIF(population,0))*100 as deathperpop from death 
+
+group by death.country, death.population 
+
+)  
+
+select *, round(cast(deathperpop as numeric),2) as rounddeathperpop 
+
+from deathper 
+
+where deathperpop is not null 
+
+order by rounddeathperpop desc 
+
+--12. find death percentage of cases according to date_column 
+
+with deathper 
+
+as 
+
+( 
+
+Select date_column, sum(new_deaths) as newdeathpermonth,  
+
+sum(new_cases) as newcasepermonth,  
+
+sum(cast(new_deaths as float))/sum(NULLIF(new_cases,0))*100 as newdeathperpop  
+
+from death 
+
+where continent is not null 
+
+group by date_column 
+
+)  
+
+select *, round(cast(newdeathperpop as numeric),2) as rounddeathperpop 
+
+from deathper 
+
+where newdeathperpop is not null 
+
+order by 1 
+
+--13. we can also count date according to month using DATE_TRUNC function. 
+-- This function is very simple and powerful. Basically allow us to extract any interval from date value 
+
+--reference: https://www.postgresqltutorial.com/postgresql-date-functions/postgresql-date_trunc/
+
+with deathper 
+
+as 
+
+( 
+
+Select date_trunc('month', date_column), sum(new_deaths) as newdeathpermonth,  
+
+sum(new_cases) as newcasepermonth,  
+
+sum(cast(new_deaths as float))/sum(NULLIF(new_cases,0))*100 as newdeathperpop  
+
+from death 
+
+where continent is not null 
+
+group by date_trunc('month', date_column) 
+
+)  
+
+select *, round(cast(newdeathperpop as numeric),2) as rounddeathperpop 
+
+from deathper 
+
+where newdeathperpop is not null 
+
+order by 1 
+
+--14. we also import covidvaccination csv file from excel to postgresql as we did previously 
+
+create table vaccin ( 
+
+so_code varchar(8),  
+
+continent varchar(13),  
+
+country varchar (32),  
+
+date_column date,  
+
+new_tests integer, 
+
+total_tests integer, 
+
+total_tests_per_thousand numeric(7,3), 
+
+new_tests_per_thousand numeric(7,3), 
+
+new_tests_smoothed integer, 
+
+new_tests_smoothed_per_thousand numeric(6,3), 
+
+positive_rate numeric(4,3), 
+
+tests_per_case numeric(8,3), 
+
+tests_units varchar (15), 
+
+total_vaccinations integer, 
+
+people_vaccinated integer, 
+
+people_fully_vaccinated integer, 
+
+new_vaccinations integer, 
+
+new_vaccinations_smoothed integer, 
+
+total_vaccinations_per_hundred numeric(6,3), 
+
+people_vaccinated_per_hundred numeric(6,3), 
+
+people_fully_vaccinated_per_hundred numeric(5,3), 
+
+new_vaccinations_smoothed_per_million integer, 
+
+stringency_index smallint, 
+
+population_density numeric(8,3), 
+
+median_age numeric(5,3), 
+
+aged_65_older numeric(5,3), 
+
+aged_70_older numeric(5,3), 
+
+gdp_per_capita numeric(9,3), 
+
+extreme_poverty numeric(5,3), 
+
+cardiovasc_death_rate numeric(6,3), 
+
+diabetes_prevalence numeric(5,3), 
+
+female_smokers numeric(5,3), 
+
+male_smokers numeric(5,3), 
+
+handwashing_facilities numeric(5,3), 
+
+hospital_beds_per_thousand numeric(5,3), 
+
+life_expectancy numeric(5,3), 
+
+human_development_index numeric(4,3) 
+
+) 
+
+--ow we try to combine a few colmns from both tables using inner join  
+
+select d.continent, d.country, d.date_column,   
+
+d.population, v.new_vaccinations  
+
+from death d 
+
+inner join vaccin v on d.country=v.country and   
+
+d.date_column=v.date_column 
+
+where d.continent is not null 
+
+order by date_column 
+
+--NOTA BENE: Be careful if you combine columns which are identical for both tables avoiding ambiguity, 
+--we need to specify table names in front of each column
+--(in our cases I have used abbrivations for both tables such as d instead of death and v instead of vaccin) 
+
+-- references https://www.googlecloudcommunity.com/gc/Technical-Tips-Tricks/Column-is-ambiguous-SQL-Error/ta-p/592669#:~:text=You%20may%20see%20an%20error,id%20will%20resolve%20the%20issue.
+
+--15. 
