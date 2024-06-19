@@ -44,3 +44,5 @@
 
   exact formula is =INDEX(CovidDeaths_csv!B:B,MATCH(MAX(LEN(CovidDeaths_csv!B:B)), LEN(CovidDeaths_csv!B:B),0),1). Result will be North America
   
+
+
