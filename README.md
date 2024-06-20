@@ -2,13 +2,13 @@
 
 ###NOTA BENE !!! I have changed name of 2 columns in excel sheet. 1) location to country, 2) date to date_column
 
--- 1. But before we started separation we did quick data processing before upload data into Postgresql
+-- 1. We separated the original COVID death and vaccination Excel file into two files. But before we started separation we did quick data processing before upload data into Postgresql
 
 -- a) Our COVID data column values have many digits after the decimal point (e.g., 0.09383617), which will consume a lot of storage in PostgreSQL. To save space, we should round all values to three decimal places.
 
 -- b) We need to update our "date_column" to use the "yyyy-mm-dd" format, which is the required SQL DATE format.
 
--- 2. We separated the original COVID death and vaccination Excel file into two files. First, we removed all columns related to vaccination and saved the file with only death-related columns under the name "CovidDeath." Then, we removed the death-related columns from the original file and saved it with only vaccination-related columns.
+-- 2. We removed all columns related to vaccination and saved the file with only death-related columns under the name "CovidDeath." Then, we removed the death-related columns from the original file and saved it with only vaccination-related columns.
 
 -- 3. The next step is to find the maximum value for each column. This will help us choose the appropriate data type and length when creating the PostgreSQL table.
 
