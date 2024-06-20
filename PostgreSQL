@@ -351,7 +351,7 @@ human_development_index numeric(4,3)
 
 ) 
 
---ow we try to combine a few colmns from both tables using inner join  
+--we try to combine a few colmns from both tables using inner join  
 
 select d.continent, d.country, d.date_column,   
 
@@ -373,4 +373,208 @@ order by date_column
 
 -- references https://www.googlecloudcommunity.com/gc/Technical-Tips-Tricks/Column-is-ambiguous-SQL-Error/ta-p/592669#:~:text=You%20may%20see%20an%20error,id%20will%20resolve%20the%20issue.
 
---15. 
+--15. we can sum new_vaccinations column  
+
+select d.continent, d.country, d.date_column,    
+
+d.population, v.new_vaccinations, sum(v.new_vaccinations) as totvac   
+
+from death d  
+
+inner join vaccin v on d.country=v.country and    
+
+d.date_column=v.date_column  
+
+where d.continent is not null  
+
+group by d.continent, d.country, d.date_column,    
+
+d.population,v.new_vaccinations 
+
+order by sum(v.new_vaccinations) 
+
+ 
+
+--Hold on. Despite using the SUM formula, SQL did not sum the values in the new_vaccinations column.
+--The main reason is that SQL did not know in which category it should sum the values.
+--This means we have multiple columns, so we need to specify based on which column we should sum the values.
+
+--Therefore we can some for example based on country using over with partition clause 
+
+select d.continent, d.country, d.date_column,    
+
+d.population, v.new_vaccinations, sum(v.new_vaccinations)  
+
+over(partition by d.country) as totvac  
+
+from death d  
+
+inner join vaccin v on d.country=v.country and    
+
+d.date_column=v.date_column  
+
+where d.continent is not null  
+
+group by d.continent, d.country, d.date_column,    
+
+d.population,v.new_vaccinations 
+
+order by 2 
+
+--The OVER function can determine how we would like to split rows. 
+--The PARTITION BY clause in the OVER function helps us group them according to our wishes.
+--We can also use ORDER BY in the OVER function to specify the ordering of our data.
+--We can use three variations: 
+
+-- a) OVER (PARTITION BY name_column ORDER BY name_column) 
+-- b) OVER (PARTITION BY name_column)
+-- c) OVER (ORDER BY name_column) according to our wishes
+
+--reference: https://www.postgresql.org/docs/current/tutorial-window.html
+
+--When we run our query, the PARTITION BY clause groups all the same countries together.
+--However, the total vaccination value appears in front of each row for that country because
+--PARTITION BY groups but does not merge them into one row, even if we use the SUM function.
+
+--16. Now we can look at what will happen if we use ORDER BY clause together with PARTITION 
+
+select d.continent, d.country, d.date_column,    
+
+d.population, v.new_vaccinations, sum(v.new_vaccinations)  
+
+over (partition by d.country order by d.country, d.date_column) as runtotvac 
+
+from death d  
+
+inner join vaccin v on d.country=v.country and    
+
+d.date_column=v.date_column  
+
+where d.continent is not null and d.country ilike '%albania' 
+
+group by d.continent, d.country, d.date_column,    
+
+d.population,v.new_vaccinations 
+
+order by runtotvac 
+
+--When we run the query this time, the result will be the running total of vaccinations. 
+--This is because we group by country and order by date. Each country has different dates, making them unique.
+
+--17th. Now we can look at data how many people vaccinated
+
+--to do so we will take running total vaccination
+--and divided by population but as we explained before we need to to use SELECT IN WITH query.
+
+with vacpeop 
+
+as  
+
+( 
+
+select d.continent, d.country, d.date_column,    
+
+d.population, v.new_vaccinations, sum(v.new_vaccinations)  
+
+over (partition by d.country order by d.country, d.date_column) as runtotvac  
+
+from death d  
+
+inner join vaccin v on d.country=v.country and    
+
+d.date_column=v.date_column  
+
+where d.continent is not null and d.country ilike '%albania' 
+
+group by d.continent, d.country, d.date_column,    
+
+d.population,v.new_vaccinations 
+
+order by runtotvac 
+
+) 
+
+select *, cast (runtotvac as float)/nullif(population,0) *100 as totvacpeop 
+
+from vacpeop 
+
+-- 18th. we can do the same with TEMP TABLE
+
+-- To do so; firstly, we create new TEMP table with the name of table1 
+
+-- Secondly, we add columns with same name and same data type we used above: 
+
+CREAT TEMP TABLE Table1 
+
+( 
+
+continent varchar (13), 
+
+country varchar (32), 
+
+date_column date, 
+
+population bigint, 
+
+new_vaccination numeric, 
+
+runtotvac numeric 
+
+) 
+
+-- Thirdly we insert data into our TEMP table table1 using INSERT INTO query; 
+
+ 
+
+INSERT INTO table1 
+
+select d.continent, d.country, d.date_column,    
+
+d.population, v.new_vaccinations, sum(v.new_vaccinations)  
+
+over (partition by d.country order by d.country, d.date_column) as runtotvac  
+
+from death d  
+
+inner join vaccin v on d.country=v.country and    
+
+d.date_column=v.date_column  
+
+where d.continent is not null and d.country ilike '%albania' 
+
+group by d.continent, d.country, d.date_column,    
+
+d.population,v.new_vaccinations 
+
+order by runtotvac 
+
+-- Fourthly, we can use same query to find how many people vaccinated; 
+
+select *, cast (runtotvac as float)/nullif(population,0) *100 as totvacpeop  
+
+from table1 
+
+-- 19th. we can also create a view using “CREAT VIEW”  
+
+create view newview as 
+
+select d.continent, d.country, d.date_column,    
+
+d.population, v.new_vaccinations, sum(v.new_vaccinations)  
+
+over(partition by d.country order by d.country, d.date_column) as runtotvac  
+
+from death d  
+
+inner join vaccin v on d.country=v.country and    
+
+d.date_column=v.date_column  
+
+where d.continent is not null and d.country ilike '%albania' 
+
+group by d.continent, d.country, d.date_column,    
+
+d.population,v.new_vaccinations 
+
+order by runtotvac 
+
